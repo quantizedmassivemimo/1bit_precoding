@@ -2,6 +2,7 @@
 Simulator for "Quantized Precoding for Massive MU-MIMO"
 -------------------------------------------------------
 (c) 2017 Christoph Studer and Sven Jacobsson
+
 e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com  
 =======================================================
 
@@ -9,9 +10,11 @@ e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 
 If you are using the simulator (or parts of it) for a publication, then you MUST cite our paper:
 
-S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer, â€œQuantized precoding for massive MU-MIMO,â€ IEEE Trans. Commun., Jun. 2017, to appear.
+S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer, €œQuantized precoding for massive MU-MIMO, IEEE Trans. Commun., Jun. 2017, to appear.
 
-and clearly mention this in your paper. More information about our research can be found at: https://sites.google.com/site/durisi and at http://vip.ece.cornell.edu
+and clearly mention this in your paper. 
+
+More information about our research can be found at: https://sites.google.com/site/durisi and at http://vip.ece.cornell.edu
 
 # How to start a simulation:
 
@@ -21,7 +24,7 @@ Simply run
 
 >> precoder_sim
 
-which starts a simulation in a 128 BS antenna, 16 UE, massive MU-MIMO system with QPSK modulation using various precoders. The simulator produces a scatterplot of the received constellation and a plot of the BER as a function of the SNR.
+which starts a simulation in a 128 BS antenna, 16 UE, massive MU-MIMO system with QPSK modulation using various precoders. The simulator returns a plot of the BER as a function of the SNR.
 
 The following precoders are currently supported by the simulator.
   - MRTi: Maximal-ratio transmission (infinite resolution)
