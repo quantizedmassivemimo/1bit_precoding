@@ -53,7 +53,6 @@ end
 
 % add paths
 addpath('precoders');
-addpath('results');
 
 % use runId random seed (enables reproducibility)
 rng(par.runId);
@@ -349,9 +348,9 @@ fprintf('\nsimulation has finished!\n\n');
 % -- save results
 
 if par.save
-    save([ 'results/' par.simName],'par','res');
+    save([par.simName],'par','res');
     if par.plot
-        print('-depsc',[ 'results/' par.simName '.eps' ]);
+        print('-depsc',[par.simName '.eps' ]);
     end
 end
 
