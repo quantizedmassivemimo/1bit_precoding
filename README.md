@@ -1,9 +1,7 @@
  =======================================================
 Simulator for "Quantized Precoding for Massive MU-MIMO"
 -------------------------------------------------------
-(c) 2017 Christoph Studer and Sven Jacobsson
-
-e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com  
+(c) 2017 Christoph Studer and Sven Jacobsson; e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com  
 =======================================================
 
 # Important information:
