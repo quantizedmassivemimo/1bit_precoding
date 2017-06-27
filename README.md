@@ -8,7 +8,7 @@ Simulator for "Quantized Precoding for Massive MU-MIMO"
 
 If you are using the simulator (or parts of it) for a publication, then you MUST cite our paper:
 
-S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer, €œQuantized precoding for massive MU-MIMO, IEEE Trans. Commun., Jun. 2017, to appear.
+S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer, Quantized precoding for massive MU-MIMO, IEEE Trans. Commun., Jun. 2017, to appear.
 
 and clearly mention this in your paper. 
 
