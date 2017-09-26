@@ -1,3 +1,4 @@
+function [x, beta] = SP(par,s,H,N0)
 % =========================================================================
 % Sphere precoding (SP)
 %   -- inputs:
@@ -12,8 +13,6 @@
 % (c) 2017 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % =========================================================================
-
-function [x, beta] = SP(par,s,H,N0)
 
     MAX = 10; % maximal number of iterations
     
@@ -32,8 +31,7 @@ function [x, beta] = SP(par,s,H,N0)
         % ZF precoded vector and precoding factor
         x_list(:,1) = par.quantizer(ZF(s, H));
         beta_list(1) = real(x_list(:,1)'*H'*s)/(norm(H*x_list(:,1),2)^2+par.U*N0);
-
-
+        
         t = 1; % iteration index
 
         while t <= MAX

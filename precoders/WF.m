@@ -1,3 +1,4 @@
+function [x, beta, P] = WF(s, H, N0)
 % =========================================================================
 % Wiener filter (WF) precoder
 %   -- inputs:
@@ -12,8 +13,6 @@
 % (c) 2017 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % =========================================================================
-
-function [x, beta, P] = WF(s, H, N0)
 
     % number of UEs
     [U, ~] = size(H);

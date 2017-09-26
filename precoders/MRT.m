@@ -1,3 +1,4 @@
+function [x, beta, P] = MRT(s, H)
 % =========================================================================
 % Maximal-ratio transmission (MRT) precoder
 %   -- inputs:
@@ -11,8 +12,6 @@
 % (c) 2017 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % =========================================================================
-
-function [x, beta, P] = MRT(s, H)
 
     % number BS antennas
     [~, B] = size(H);

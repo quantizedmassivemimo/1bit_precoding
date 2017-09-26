@@ -1,3 +1,4 @@
+function [x, beta] = EXS(par,s,H,N0)
 % =========================================================================
 % Exhaustive search (EXS) precoder
 %   -- inputs:
@@ -13,10 +14,6 @@
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % =========================================================================
 
-function [x, beta] = EXS(par,s,H,N0)
-
-    par.EXS.type = 'complex'; % real or complex 
-
     if par.L == 2
 
         % all possible quantization outcomes
@@ -28,34 +25,14 @@ function [x, beta] = EXS(par,s,H,N0)
         % consider only outcomes with positive gain
         x_list = x_list(:, real(s'*H*x_list)>0); 
 
-        if strcmpi(par.EXS.type, 'complex')
+        % received noiseless signal
+        Hx_list = H*x_list; 
 
-            % received noiseless signal
-            Hx_list = H*x_list; 
+        % precoding factor
+        beta = real(s'*Hx_list)./(dot(Hx_list,Hx_list) + par.U*N0); 
 
-            % precoding factor
-            beta = real(s'*Hx_list)./(dot(Hx_list,Hx_list) + par.U*N0); 
-
-            % objective function
-            J = sum(abs(bsxfun(@minus, s, bsxfun(@times, beta, Hx_list))).^2,1) + beta.^2*par.U*N0;
-
-        elseif strcmpi(par.EXS.type, 'real')
-
-            % convert to real-valued channel
-            HR = [real(H), -imag(H); imag(H), real(H)];
-            sR = [real(s); imag(s)]; 
-            xR_list = [real(x_list); imag(x_list)];
-
-            % received noiseless signal
-            HxR_list = HR*xR_list; 
-
-            % precoding factor
-            beta = sR'*HxR_list./(dot(HxR_list,HxR_list) + par.U*N0); 
-
-            % objective function
-            J = sum(abs(bsxfun(@minus, sR, bsxfun(@times, beta, HxR_list))).^2,1) + beta.^2*par.U*N0;
-
-        end
+        % objective function
+        J = sum(abs(bsxfun(@minus, s, bsxfun(@times, beta, Hx_list))).^2,1) + beta.^2*par.U*N0;
 
         % pick solution that minimizes objective function
         [~, idxmin] = min(J); 

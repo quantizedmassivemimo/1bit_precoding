@@ -1,3 +1,4 @@
+function [x_sdr1, beta_sdr1, x_sdrr, beta_sdrr] = SDR(par,s,H,N0)
 % =========================================================================
 % Semidefinite relaxation (SDR)
 %   -- inputs:
@@ -15,8 +16,6 @@
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % =========================================================================
 
-function [x_sdr1, beta_sdr1, x_sdrr, beta_sdrr] = SDR(par,s,H,N0)
-
     MAX = 1e2; % number of candidate solutions (randomizations)
 
     % convert to real-valued channel
@@ -24,7 +23,7 @@ function [x_sdr1, beta_sdr1, x_sdrr, beta_sdrr] = SDR(par,s,H,N0)
     HR = [real(H), -imag(H); imag(H), real(H)];
     
     if par.L == 2
-
+        
         % solve SDP
         cvx_begin quiet
             TR = [HR'*HR+par.U*N0*eye(2*par.B), -HR'*sR; -sR'*HR, norm(sR,2)^2];
@@ -52,7 +51,7 @@ function [x_sdr1, beta_sdr1, x_sdrr, beta_sdrr] = SDR(par,s,H,N0)
     % find maximum eigenvalue 
     [~, idxmax] = max(diag(D)); 
 
-    % quantize to feasible solution
+    % quantize to feasible solution and convert from real ro complex
     xR_sdr1 = par.quantizer(sqrt(D(idxmax,idxmax))*V(:,idxmax));
     x_sdr1 = sign(xR_sdr1(end)) * (xR_sdr1(1:par.B,1)+1i*xR_sdr1(par.B+1:2*par.B,1));
 
@@ -75,6 +74,7 @@ function [x_sdr1, beta_sdr1, x_sdrr, beta_sdrr] = SDR(par,s,H,N0)
     % pick candidate that maximizes obj. function
     [~, idxmax] = min(J);
 
+    % real ro complex
     xR_sdrr = xR(:,idxmax); 
     x_sdrr = sign(xR_sdrr(end)) * (xR_sdrr(1:par.B,1)+1i*xR_sdrr(par.B+1:2*par.B,1));
 
