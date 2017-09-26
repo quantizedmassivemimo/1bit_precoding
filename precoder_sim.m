@@ -4,7 +4,7 @@ function precoder_sim(varargin)
 % -------------------------------------------------------------------------
 % Revision hisclctory:
 %   - jun-26-2017  v0.1   sj: simplified/commented code for GitHub
-%   - sep-xx-2017  v1.0   sj: minor bug fixes
+%   - sep-27-2017  v1.0   sj: minor bug fixes
 % -------------------------------------------------------------------------
 % (c) 2017 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
