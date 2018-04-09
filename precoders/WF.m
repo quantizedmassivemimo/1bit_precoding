@@ -2,11 +2,11 @@ function [x, beta, P] = WF(s, H, N0)
 % =========================================================================
 % Wiener filter (WF) precoder
 %   -- inputs:
-%       - s: Ux1 complex-valued symbol vector
-%       - H: UxB complex-valued channel matrix
+%       - s: Ux1 symbol vector
+%       - H: UxB channel matrix
 %       - N0: noise power spectral density (scalar)
 %   -- outputs: 
-%       - x: Bx1 complex-valued precoded vector
+%       - x: Bx1 precoded vector
 %       - beta: precoding factor (scalar)
 %       - P: BxU precoding matrix
 % -------------------------------------------------------------------------

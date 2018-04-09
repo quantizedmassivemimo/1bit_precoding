@@ -1,19 +1,17 @@
-function [x, beta] = EXS(s, H, N0)
+function [x, beta] = BB1(s, H, N0)
 % =========================================================================
-% exhaustive search (EXS)
+% 1-bit branch-and-bound (BB-1)
 %   -- inputs:
 %       - s: Ux1 symbol vector
 %       - H: UxB channel matrix
 %       - N0: noise power spectral density (scalar)
-%   -- outputs: 
+%   -- outputs:
 %       - x: Bx1 precoded vector
 %       - beta: precoding factor (scalar)
 % -------------------------------------------------------------------------
 % (c) 2018 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % -------------------------------------------------------------------------
-% (c) 2017 Christoph Studer and Sven Jacobsson
-% e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % If you use this precoder or parts of it, then you must cite our papers:
 %   -- S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer,
 %   "Quantized precoding for massive MU-MIMO", IEEE Trans. Commun.,
@@ -23,6 +21,12 @@ function [x, beta] = EXS(s, H, N0)
 %   Conf. Acoust., Speech, Signal Process. (ICASSP), Calgary, Canada, Apr. 
 %   2018, to appear.
 % =========================================================================
+
+    % tricks (true/false)
+    sorted_decomp = true; % sorted QR decomposition
+    initial_radius = true; % initial radius using WF solution
+    prune_symmetry = true; % prune 1/2 of the tree by symmetry
+    predict_future = true; % tighten bound on numerator
     
     % dimensions
     [U, B] = size(H);
@@ -35,16 +39,27 @@ function [x, beta] = EXS(s, H, N0)
     Hb = [H; sqrt(U*N0)*eye(B)];
  
     % QR decomposition
-    [~,R] = qr(Hb); order = 1:B;
+    if sorted_decomp == 1
+        [~,R,order] = sqr(Hb);
+    else
+        [~,R] = qr(Hb); order = 1:B;
+    end
 
     % MRT vector (scaled) before/after quantization
     zMRT = H(:,order)'*s;
     xMRT = quantizer(zMRT);
 
+    % set initial radius accoding to WF solution
+    if initial_radius == 1
+        x = quantizer(WF(s,H(:,order),N0)); % initial guess (WF solution)
+        radius = norm(R*x,2)^2/real(zMRT'*x)^2; % radius of initial guess 
+    else
+        radius = inf; % no initial radius
+    end
+
     % initialization
     PA = zeros(B,1); % path
     ST = zeros(B,length(alphabet)); % stack
-    radius = inf;
     
     % preprocessing
     num_next = nan(4,B); % numerator (next step)
@@ -58,17 +73,38 @@ function [x, beta] = EXS(s, H, N0)
         den_future(l) = real(zMRT(1:l-1)'*xMRT(1:l-1));
     end
     
+    % predicting the future
+    if predict_future == 1
+        iRt = cell(1,B);
+        eigmin = nan(1,B);
+        for l=2:B
+            iRt{l} = inv(R(1:l-1,1:l-1));
+            eigmin(l) = min(svd(R(1:l-1,1:l-1)))^2;
+        end
+    end
+    
     % root node
     level = B;
     
     % numerator (lower bound)
-    numerator = abs(num_next(:,l)).^2; % present only
+    if predict_future == 1
+        b = iRt{level}*(R(1:level-1,level)*alphabet.');        
+        num_future = eigmin(level)*sum(abs(quantizer(b)-b).^2,1).';        
+        numerator = abs(num_next(:,l)).^2 + num_future;
+    else
+        numerator = abs(num_next(:,l)).^2; % present only
+    end
     
     % denominator (upper bound)
     denominator = (abs(den_present(:,level)) + abs(den_future(level))).^2; % present and future
     
     % add root node to stack
     ST(level,:) = numerator./denominator;
+    
+    % prune half of the tree by symmetry
+    if prune_symmetry == 1
+        ST(level,3:4) = inf; % exclude symmetric solutions
+    end
     
     % sphere decoding
     while level <= B
@@ -84,7 +120,7 @@ function [x, beta] = EXS(s, H, N0)
             
             % search child
             if minPED < radius
-                
+               
                 % valid candidate found
                 if level>1 
                     
@@ -95,7 +131,12 @@ function [x, beta] = EXS(s, H, N0)
                     % numerator (lower bound)
                     num_past = norm(R(level+1:end,level+1:end)*alphabet(PA(level+1:end,1)),2)^2;
                     num_present = abs(num_next(:, level) + R(level,level+1:end) * alphabet(PA(level+1:end,1))).^2;
-                    num_future = 0; % no future metric
+                    if predict_future == 1 && level>1
+                        b = iRt{level}*(num_potential{:,level} + (R(1:level-1,level+1:end)*alphabet(PA(level+1:end,1)))*ones(1,length(alphabet)));
+                        num_future = eigmin(level)*sum(abs(b-quantizer(b)).^2,1).';
+                    else
+                       num_future = 0; 
+                    end
                     numerator =  num_past + num_present + num_future;
                     
                     % denominator (upper bound)
@@ -138,3 +179,4 @@ function [x, beta] = EXS(s, H, N0)
     end
     
 end
+

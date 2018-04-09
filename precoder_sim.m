@@ -1,38 +1,40 @@
 function precoder_sim(varargin)
 % =========================================================================
-% Simulator for "Quantized Precoding for Massive MU-MIMO" (v1.0)
+% Simulator for "Quantized Precoding for Massive MU-MIMO" (v1.2)
 % -------------------------------------------------------------------------
-% Revision hisclctory:
-%   - jun-26-2017  v0.1   sj: simplified/commented code for GitHub
+% Revision history:
+%   - apr-06-2018  v1.2   sj: simplified/commented code for GitHub
+%   - oct-12-2017  v1.1   cs: 1-bit branch-and-bound added
 %   - sep-27-2017  v1.0   sj: minor bug fixes
+%   - jun-26-2017  v0.1   sj: simplified/commented code for GitHub
 % -------------------------------------------------------------------------
-% (c) 2017 Christoph Studer and Sven Jacobsson
+% (c) 2018 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 % -------------------------------------------------------------------------
 % If you this simulator or parts of it, then you must cite our paper:
-%   S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer
+%   -- S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer,
 %   "Quantized precoding for massive MU-MIMO", IEEE Trans. Commun.,
-%   Jun. 2017, to appear.
+%   vol. 65, no. 11, pp. 4670--4684, Nov. 2017.
 %=========================================================================
 
     % -- set up default/custom parameters
 
     if isempty(varargin)
-
+       
         disp('using default simulation settings and parameters...');
 
         % set default simulation parameters
         par.runId = 0; % simulation ID (used to reproduce results)
         par.plot = true; % plot results (true/false)
-        par.save = true; % save results (true/false)
-        par.L = 2; % number of DAC levels per I or Q dimension (2 < L < 32)
+        par.save = false; % save results (true/false)
+        par.L = 2; % number of DAC levels (2 <= L <= 32)
         par.U = 16; % number of UEs
         par.B = 128; % number of BS antennas
         par.trials = 1e3; % number of Monte-Carlo trials (transmissions)
         par.relerr = 0; % relative channel estimate error
         par.SNRdB_list = -10:3:15; % list of SNR [dB] values to be simulated
         par.mod = 'QPSK'; % modulation type: 'BPSK','QPSK','16QAM','64QAM'
-        par.precoder = {'MRT', 'MRTi', 'ZF', 'ZFi', 'SQUID'}; % select precoding scheme(s) to be evaluated
+        par.precoder = {'MRT_inf','ZF_inf','MRT','ZF','SQUID'}; % select precoding scheme(s) to be evaluated
 
     else
 
@@ -44,15 +46,18 @@ function precoder_sim(varargin)
     % -- initialization
 
     % set unique filename
-    par.simName = ['BER_',num2str(par.U),'x',num2str(par.B),'_',num2str(par.mod),'_',num2str(par.runId),' - ',datestr(clock,0)];
+    par.simName = ['BER_',num2str(par.U),'x',num2str(par.B),'_',num2str(par.mod),...
+        '_',num2str(par.runId),'_',datestr(clock,0)];
 
     % check for SDR precoding
     if find(ismember(par.precoder,'SDR'))
-        par.precoder = [par.precoder(1:(find(ismember(par.precoder,'SDR'))-1)), 'SDR1', 'SDRr', par.precoder((find(ismember(par.precoder,'SDR'))+1):end)];
+        par.precoder = [par.precoder(1:(find(ismember(par.precoder,'SDR'))-1)), ...
+            'SDR1', 'SDRr', par.precoder((find(ismember(par.precoder,'SDR'))+1):end)];
     end
 
     % add paths
     addpath('precoders');
+    addpath('tools');
 
     % use runId random seed (enables reproducibility)
     rng(par.runId);
@@ -82,7 +87,7 @@ function precoder_sim(varargin)
     end
 
     % normalize symbol energy
-    par.symbols = par.symbols/sqrt(mean(abs(par.symbols).^2));
+    par.symbols2 = par.symbols/sqrt(sum(abs(par.symbols).^2)/length(par.symbols));
 
     % precompute bit labels
     par.card = length(par.symbols); % cardinality
@@ -93,7 +98,8 @@ function precoder_sim(varargin)
     res.VER = zeros(length(par.precoder),length(par.SNRdB_list));
     res.SER = zeros(length(par.precoder),length(par.SNRdB_list));
     res.BER  = zeros(length(par.precoder),length(par.SNRdB_list));
-
+    
+    % Tx and Rx power (average and max)
     res.TxAvgPower = zeros(length(par.precoder),length(par.SNRdB_list));
     res.RxAvgPower = zeros(length(par.precoder),length(par.SNRdB_list));
     res.TxMaxPower = zeros(length(par.precoder),length(par.SNRdB_list));
@@ -101,7 +107,6 @@ function precoder_sim(varargin)
 
     % save results for later viewing
     if par.trials <= 1e3
-        beta_list = nan(length(par.precoder),length(par.SNRdB_list),par.trials);
         shat_list = nan(par.U,length(par.precoder),length(par.SNRdB_list),par.trials);
     end
 
@@ -148,7 +153,6 @@ function precoder_sim(varargin)
         (normcdf(par.thresholds(2:end)*sqrt(2*par.B)) ...
         -normcdf(par.thresholds(1:end-1)*sqrt(2*par.B)))))^-1; % normalization constant
     par.labels = par.alpha*par.labels; % quantizer labels
-    par.alphabet = combvec(par.labels, par.labels); par.alphabet = par.alphabet(1,:) + 1i*par.alphabet(2,:); % quantizer alphabet
     par.bussgang = par.alpha*par.lsb*sqrt(par.B/pi)*sum(exp(-par.B*par.lsb^2*((1:par.L-1)-par.L/2).^2)); % Bussgang gain
     
     % clipping and quantization
@@ -191,16 +195,18 @@ function precoder_sim(varargin)
 
             % noise-independent precoders
             switch (par.precoder{pp})
-                case 'MRTi' % MRT precoding (inf. res.)
+                case 'MRT_inf' % MRT precoding (inf. res.)
                     [x, beta] = MRT(s,Hhat);
                 case 'MRT' % MRT precoding (quantized)
                     [z, beta] = MRT(s,Hhat);
-                    x = par.quantizer(z); beta = beta/par.bussgang;
-                case 'ZFi' % ZF precoding (inf. res.)
+                    x = par.quantizer(z); 
+                    beta = beta/par.bussgang;
+                case 'ZF_inf' % ZF precoding (inf. res.)
                     [x, beta] = ZF(s,Hhat); 
                 case 'ZF' % ZF precoding (quantized)
                     [z, beta] = ZF(s, Hhat);
-                    x = par.quantizer(z); beta = beta/par.bussgang;
+                    x = par.quantizer(z); 
+                    beta = beta/par.bussgang;
             end     
 
             % SNR loop
@@ -211,21 +217,61 @@ function precoder_sim(varargin)
 
                 % noise-dependent precoders
                 switch (par.precoder{pp})
-                    case 'WFi'  % WF precoding (inf. res.)
+                    case 'WF_inf'  % WF precoding (inf. res.)
                         [x, beta] = WF(s,Hhat,N0);
                     case 'WF'  % WF precoding (quantized)
                         [z, beta] = WF(s,Hhat,N0);
-                        x = par.quantizer(z); beta = beta/par.bussgang; 
-                    case 'SDR1' % SDR with rank-one approx.
-                        [x, beta, x_random, beta_random] = SDR(par,s,Hhat,N0);
-                    case 'SDRr' % SDR with randomization
-                        x = x_random; beta = beta_random;
-                    case 'SQUID' % Squared inifinity-norm relaxation with Douglas-Rachford splitting
-                        [x, beta] = SQUID(par,s,Hhat,N0);      
+                        x = par.quantizer(z); 
+                        beta = beta/par.bussgang; 
+                    case {'SDR1', 'SDRr'} 
+                        if par.L == 2
+                            if t == 1 && k == 1 && par.B > 16
+                                warning('SDR has high complexity for large systems. Run SDR for small systems only.');
+                            end
+                            if strcmpi(par.precoder{pp}, 'SDR1') % SDR with rank-one approximation
+                                [x, beta, x_random, beta_random] = SDR(s,Hhat,N0);
+                            elseif strcmpi(par.precoder{pp}, 'SDRr') % SDR with randomization
+                                x = x_random; beta = beta_random; 
+                            end
+                        else
+                            error('SDR: only 1 bit (L=2) supported!');
+                        end
+                    case 'SQUID' % squared inifinity-norm relaxation with Douglas-Rachford splitting
+                        if par.L == 2
+                            if t == 1 && k == 1
+                                warning('Default parameters used for SQUID. Tune parameters for best results!');
+                            end
+                            [x, beta] = SQUID(s,Hhat,N0);    
+                        else
+                            error('SQUID: only 1 bit (L=2) supported!');
+                        end
                     case 'SP' % sphere precoding
-                        [x, beta] = SP(par,s,Hhat,N0);
-                    case 'EXS' % Exhaustive search
-                        [x, beta] = EXS(par,s,Hhat,N0);                    
+                        if par.L == 2
+                            if t == 1 && k == 1 && par.B > 16
+                                warning('SP has high complexity for large systems. Run SP for small systems only.');
+                            end
+                            [x, beta] = SP(s,Hhat,N0);
+                        else
+                            error('SP: only 1 bit (L=2) supported!');
+                        end
+                    case 'BB-1' % branch-and-bound precoding
+                        if par.L == 2
+                            if t == 1 && k == 1 && par.B > 16
+                                warning('BB-1 has high complexity for large systems. Run BB-1 for small systems only.');
+                            end
+                            [x, beta] = BB1(s,Hhat,N0);
+                        else
+                            error('BB-1: only 1 bit (L=2) supported!');
+                        end
+                    case 'EXS' % exhaustive search
+                        if par.L == 2
+                            if t == 1 && k == 1 && par.B > 16
+                                warning('EXS has high complexity for large systems. Run EXS for small systems only.');
+                            end
+                            [x, beta] = EXS(s,Hhat,N0);  
+                        else
+                            error('EXS: only 1 bit (L=2) supported!');
+                        end
                 end
 
                 % transmit data over noisy channel
@@ -253,11 +299,9 @@ function precoder_sim(varargin)
                 res.SER(pp,k) = res.SER(pp,k) + sum(err)/par.U; % symbol error rate
                 res.BER(pp,k) = res.BER(pp,k) + sum(sum(b~=bhat))/(par.U*par.bps); % bit error rate
 
-                % save estimated symbols and precoding factor (if the number of
-                % trials is not too large)
+                % save estimated symbols (if number of trials not too large)
                 if par.trials <= 1e3
                     shat_list(:,pp,k,t) = shat;
-                    beta_list(pp,k,t) = beta;
                 end
 
             end % SNR loop
@@ -301,6 +345,18 @@ function precoder_sim(varargin)
             0.0000    0.5000    0.0000;...
             0.0000    0.0000    1.0000;...
             1.0000    0.0000    0.0000];
+        
+        % legends
+        precoder_legend = par.precoder;
+        for pp = 1:length(par.precoder)
+            if strcmpi(precoder_legend{pp}, 'MRT_inf')
+                precoder_legend{pp} = 'MRT (inf. res.)';
+            elseif strcmpi(precoder_legend{pp}, 'ZF_inf')
+                precoder_legend{pp} = 'ZF (inf. res.)';
+            elseif strcmpi(precoder_legend{pp}, 'WF_inf')
+                precoder_legend{pp} = 'WF (inf. res.)';
+            end
+        end
 
         % plot received symbol constellation (for highest SNR value)
         if par.trials <= 1e3
@@ -323,8 +379,9 @@ function precoder_sim(varargin)
                 plot(par.symbols, 'ko','MarkerSize',7);
                 axis(max(abs(reshape(shat_list(:,:,end,:),1,[])))*[-1 1 -1 1]); 
                 axis square; box on;
-                title(par.precoder{pp},'fontsize',12);
-                xlabel(['P_{avg}= ',num2str(pow2db(res.TxAvgPower(pp)),'%0.2f'),' dB  and  P_{max}= ',num2str(pow2db(res.TxMaxPower(pp)),'%0.2f'),' dB'],'fontsize',12);
+                title(precoder_legend{pp},'fontsize',12);
+                xlabel(['P_{avg}= ',num2str(10*log10(res.TxAvgPower(pp)),'%0.2f'),' dB',...
+                    ' and P_{max}= ',num2str(10*log10(res.TxMaxPower(pp)),'%0.2f'),' dB'],'fontsize',12);
             end
 
         end
@@ -340,7 +397,7 @@ function precoder_sim(varargin)
         if length(par.SNRdB_list) > 1
             axis([min(par.SNRdB_list) max(par.SNRdB_list) 1e-4 1]);
         end
-        legend(par.precoder,'FontSize',12,'location','southwest')
+        legend(precoder_legend,'FontSize',12,'location','southwest')
         set(gca,'FontSize',12);
 
     end
@@ -357,3 +414,5 @@ function precoder_sim(varargin)
     end
 
 end
+
+

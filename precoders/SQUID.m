@@ -1,76 +1,67 @@
-function [x, beta] = SQUID(par,s,H,N0)
+function [x, beta] = SQUID(s,H,N0)
 % =========================================================================
-% Squared infinity-norm relaxation with Douglas-Rachford splitting (SQUID)
+% squared infinity-norm relaxation with Douglas-Rachford splitting (SQUID)
 %   -- inputs:
-%       - par: struct of simulation parameters
-%       - s: Ux1 complex-valued symbol vector
-%       - H: UxB complex-valued channel matrix
+%       - s: Ux1 symbol vector
+%       - H: UxB channel matrix
 %       - N0: noise power spectral density (scalar)
 %   -- outputs: 
-%       - x: Bx1 complex-valued precoded vector
+%       - x: Bx1 precoded vector
 %       - beta: precoding factor (scalar)
 % -------------------------------------------------------------------------
-% (c) 2017 Christoph Studer and Sven Jacobsson
+% (c) 2018 Christoph Studer and Sven Jacobsson
 % e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
+% -------------------------------------------------------------------------
+% If you use this precoder or parts of it, then you must cite our paper:
+%   -- S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer,
+%   "Quantized precoding for massive MU-MIMO", IEEE Trans. Commun.,
+%   vol. 65, no. 11, pp. 4670--4684, Nov. 2017.
 % =========================================================================
+
+    % dimensions
+    [U, B] = size(H);
+
+    % number of iterations
+    iter = 50; 
     
+    % gain: affects the convergence of SQUID 
+    % set to 1 for large problems (e.g., 128 BS antennas) and low SNR
+    % set to small values for small (ill-conditioned) problems and high SNR
+    gain = 1; % default value (MUST be optimized)
+
     % convert to real-valued channel
     HR = [ real(H) -imag(H) ; imag(H) real(H) ];
     sR = [ real(s) ; imag(s) ];
   
     % initialize
-    b = zeros(2*par.B,1);
-    c = zeros(2*par.B,1);
-    
-    gain = 1; % set to 1 for large problems; small values for small, ill-conditioned problems
-    iter = 50; % number of iterations
+    b = zeros(2*B,1);
+    c = zeros(2*B,1);
     
     % pre-processing
-    Q = HR'/((0.5/gain)*eye(2*par.U) + HR*HR');
+    Q = HR'/((0.5/gain)*eye(2*U) + HR*HR');
     sMF = HR'*sR;
     sREG = (2*gain)*(sMF - Q*(HR*sMF));
    
-    if par.L == 2
-        for t=1:iter % SQUID loop
-            z = 2*b -c;
-            a = sREG + z - Q*(HR*z);
-            b = prox_infinityNorm2(c+a-b,2*par.U*par.B*N0);        
-            c = c + a - b;
-        end
-    else
-        error('SQUID: only 1-bit DACs supported!');
+    for t=1:iter % SQUID loop
+        z = 2*b -c;
+        a = sREG + z - Q*(HR*z);
+        b = prox_infinity_norm_squared(c+a-b,2*U*B*N0);        
+        c = c + a - b;
     end
     
     % extract binary solution
     x = sign(b);     
-    x = 1/sqrt(2*par.B)*(x(1:par.B,1)+1i*x(par.B+1:2*par.B,1));
+    x = 1/sqrt(2*B)*(x(1:B,1)+1i*x(B+1:2*B,1));
 
     % compute beta
     Hx = H*x; 
-    beta = real(Hx'*s)/(norm(Hx,2)^2+par.U*N0);
+    beta = real(Hx'*s)/(norm(Hx,2)^2+U*N0);
     
-    % check (and fix) if beta is negative
+    % flip negative beta
     if beta < 0
         x = -x;
         beta = -beta;
     end
 
-end
-
-% proximal mapping of the infinity-norm-squared.
-% perform prox operator: min lambda*||x||_inf^2 + ||x-w||^2
-function xk = prox_infinityNorm2(w,lambda)
-
-    N = length(w);
-    wabs = abs(w);
-    ws = (cumsum(sort(wabs,'descend')))./(2*lambda+(1:N)');
-    alphaopt = max(ws);
-    
-    if alphaopt>0 
-      xk = min(wabs,alphaopt).*sign(w); % truncation step
-    else
-      xk = zeros(size(w)); % if t is big, then solution is zero
-    end   
-    
 end
 
