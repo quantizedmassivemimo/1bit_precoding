@@ -1,5 +1,5 @@
 function xk = prox_infinity_norm_squared(w,lambda)
-% proximal operator for the squared infinity-norm.
+% proximal operator for the squared infinity norm.
 
     N = length(w);
     wabs = abs(w);

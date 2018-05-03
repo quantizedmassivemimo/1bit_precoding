@@ -25,9 +25,12 @@ function [x, beta] = SQUID(s,H,N0)
     iter = 50; 
     
     % gain: affects the convergence of SQUID 
-    % set to 1 for large problems (e.g., 128 BS antennas) and low SNR
-    % set to small values for small (ill-conditioned) problems and high SNR
-    gain = 1; % default value (MUST be optimized)
+    % - set to 1 for large problems (e.g., 128 BS antennas) or low SNR
+    % - set to small value for small problems or high SNR
+    gain = 1; % default value (must be optimized)
+    
+    % relxation parameter: affects the convergence of SQUID 
+    rho = 1; % default value (must be optimized)
 
     % convert to real-valued channel
     HR = [ real(H) -imag(H) ; imag(H) real(H) ];
@@ -46,7 +49,7 @@ function [x, beta] = SQUID(s,H,N0)
         z = 2*b -c;
         a = sREG + z - Q*(HR*z);
         b = prox_infinity_norm_squared(c+a-b,2*U*B*N0);        
-        c = c + a - b;
+        c = c + rho*(a - b);
     end
     
     % extract binary solution

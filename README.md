@@ -1,8 +1,6 @@
 # Simulator for "Quantized Precoding for Massive MU-MIMO"
 (c) 2018 Christoph Studer and Sven Jacobsson;
-e-mail: studer@cornell.edu & sven.jacobsson@ericsson.com
-
-More information about our research can be found at [http://vip.ece.cornell.edu] and [https://sites.google.com/site/durisi].
+e-mail: studer@cornell.edu and sven.jacobsson@ericsson.com
 
 ### Important information
 
@@ -16,7 +14,7 @@ S. Jacobsson, G. Durisi, M. Coldrey, T. Goldstein, and C. Studer, "Quantized pre
 
 and clearly mention this in your paper.
 
-### How to start a simulation:
+### How to start a simulation
 
 Simply run
 
@@ -27,10 +25,10 @@ precoder_sim
 which starts a simulation for a massive MU-MIMO system (with 128 BS antennas and 16 users) with QPSK modulation using MRT and ZF precoding (for 1-bit quantization and infinite resolution), as well as the SQUID algorithm proposed in the paper.
 
 The following precoders are currently supported by the simulator:
+  - EXS: exhaustive search
   - BB-1: 1-bit branch-and-bound
   - MRT: maximal-ratio transmission (quantized)
   - MRT_inf: maximal-ratio transmission (infinite resolution)
-  - EXS: exhaustive search
   - SDR: semidefinite relaxation (rank-one approximation and randomization)
   - SP: sphere precoding
   - SQUID: squared infinity-norm Douglas-Rachford splitting
@@ -43,7 +41,7 @@ To use the SDR precoder, you need to install CVX, which can be found here: http:
 
 The linear precoders MRT, ZF, and WF can be used together with multi-bit quantization, whereas the nonlinear precoders BB-1, EXS, SDR, SP, and SQUID are supported only for 1-bit quantization. For ill-conditioned problems, the convergence of SQUID can be improved by tuning (see detailed comments in the code). It is recommended to use BB-1, EXS, SP, and SDR only for smaller systems, as the complexity of these precoders scales unfavorably with the number of BS antennas.
 
-If you are using any of the precoders BB-1, EXS, and SP for a publication, then you should *also* cite our paper:
+If you are using any of the precoders BB-1, EXS, or SP for a publication, then you should *also* cite our paper:
 
 S. Jacobsson, W. Xu, G. Durisi, and C. Studer, “MSE-optimal 1-bit precoding for multiuser MIMO via branch and bound,” in Proc. IEEE Int. Conf. Acoust., Speech, Signal Process. (ICASSP), Calgary, Canada, Apr. 2018, to appear.
 
@@ -53,6 +51,7 @@ The simulator runs with predefined parameters. You can specify your own system a
 We highly recommend you to execute the code step-by-step (using MATLAB's debug mode) in order to get a detailed understanding of the simulator.
 
 ### Version history
+- Version 1.3: sven.jacobsson@ericsson.com - minor bug fixes
 - Version 1.2: sven.jacobsson@ericsson.com - simplified/commented code for GitHub
 - Version 1.1: studer@cornell.edu - 1-bit branch-and-bound added
 - Version 1.0: sven.jacobsson@ericsson.com - minor bug fixes

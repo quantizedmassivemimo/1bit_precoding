@@ -249,6 +249,9 @@ function precoder_sim(varargin)
                         end
                     case 'SQUID' % squared inifinity-norm relaxation with Douglas-Rachford splitting
                         if par.L == 2
+                            if tt == 1 && k == 1
+                                warning('Default parameters used for SQUID. Tune parameters for best results!');
+                            end
                             [x, beta] = SQUID(s,Hhat,N0);    
                         else
                             error('SQUID: only 1 bit (L=2) supported!');
@@ -280,8 +283,7 @@ function precoder_sim(varargin)
                         else
                             error('EXS: only 1 bit (L=2) supported!');
                         end
-                    otherwise
-                        error('precoder not supported!')
+                        ot
                 end
 
                 % transmit data over noisy channel
@@ -320,12 +322,10 @@ function precoder_sim(varargin)
 
         % keep track of simulation time
         if toc>10
-            
             time=toc;
             time_elapsed = time_elapsed + time;
             fprintf('estimated remaining simulation time: %3.0f min.\n',time_elapsed*(par.trials/tt-1)/60);
             tic;
-            
         end
 
     end % trials loop
